@@ -84,7 +84,7 @@ void ADC_CMU_config(){
 // ******************************************
 uint32_t ADC_data_in; //DAC_data_out;
 uint32_t TimerCnt;
-void TIMER0_IRQHandler(void){
+/*void TIMER0_IRQHandler(void){
 	ADC_data_in = ADC_DataSingleGet(ADC0);
 	ADC_Start(ADC0, adcStartSingle);
 	ADC_data_in_tomb[index]= ADC_data_in;
@@ -106,6 +106,7 @@ void TIMER0_IRQHandler(void){
 	TimerCnt=0;
 	}
 }
+*/
 
 void init_leds()
 {
@@ -239,9 +240,10 @@ __asm__ __volatile__ ("nop"); \
 __asm__ __volatile__ ("nop"); \
 
 #define PIROS 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0
-#define KEK 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,1,1,1
+#define KEK 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1
 #define ZOLD 1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
 #define rszin 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1
+#define feher 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1
 
 int zold[24] = {1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0};
 
@@ -260,7 +262,7 @@ void clear()
 {
 	int i;
 	int j;
-	for(i = 1; i <= 5; i++)
+	for(i = 1; i <= LEDS; i++)
 	{
 		for(j = 1; j <= 24; j++)
 		{
@@ -271,20 +273,20 @@ void clear()
 
 int main(void)
 {
-	/*
+
 	ADC_CMU_config();
-	TIMER_config();
+	//TIMER_config();
 	ADC_config();
-	*/
+
 	int i;
 	int j;
 	int tomb[LEDS][24] =
 	{
-	   {ZOLD} ,   /*  initializers for row indexed by 0 */
-	   {ZOLD} ,   /*  initializers for row indexed by 1 */
-	   {ZOLD} ,   /*  initializers for row indexed by 2 */
-	   {ZOLD} ,   /*  initializers for row indexed by 3 */
-	   {ZOLD}    /*  initializers for row indexed by 4 */
+	   {feher} ,   /*  initializers for row indexed by 0 */
+	   {feher} ,   /*  initializers for row indexed by 1 */
+	   {feher} ,   /*  initializers for row indexed by 2 */
+	   {feher} ,   /*  initializers for row indexed by 3 */
+	   {feher}    /*  initializers for row indexed by 4 */
 	};
 	CHIP_Init();
 	/* Setup SysTick Timer for 1 msec interrupts  */
@@ -296,7 +298,7 @@ int main(void)
 	GPIO->P[2].DOUTCLR = 1 << 4;
 	delay50ms();
 	clear();
-	delay50ms();
+	Delay(1000);
 	/*
 	for(i = 0; i < 24; i++)
 	{
@@ -313,12 +315,20 @@ int main(void)
 	*/
 	while(1)
 	{
-		clear();
-		delay50ms();
-		delay50ms();
-		delay50ms();
-		delay50ms();
-		delay50ms();
+		//clear();
+		//Delay(1);
+		ADC_data_in = ADC_DataSingleGet(ADC0);  //AD átalakítás kiolvasása
+		ADC_data_in_tomb[index]= ADC_data_in;
+		AD_voltage[index]=ADC_data_in * adkonst;
+		if(index==(adcmeret-1))
+		{
+			index=0;
+		}
+		else
+		{
+			index++;
+		}
+
 		for(i = 0; i < LEDS; i++)
 		{
 			for(j = 0; j < 24; j++)
@@ -335,16 +345,10 @@ int main(void)
 		}
 		if(i == 5)
 		{
-			clear();
-			delay50ms();
-			delay50ms();
-			delay50ms();
-			delay50ms();
-			delay50ms();
-			delay50ms();
-			delay50ms();
-			delay50ms();
-			delay50ms();
+
+			ADC_Start(ADC0, adcStartSingle);
+			Delay(1);
+
 		}
 	}
 }
