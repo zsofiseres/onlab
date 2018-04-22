@@ -18,6 +18,7 @@
 #define adcmeret 100
 #define FS 5000 // mintavételi frekvencia megadása Hz-ben
 #define TIMER_DIV (12000000/FS-1) // osztási arány
+#define LEDS 12
 
  uint32_t ADC_data_in_tomb[adcmeret];
  double AD_voltage[adcmeret];
@@ -240,14 +241,40 @@ __asm__ __volatile__ ("nop"); \
 __asm__ __volatile__ ("nop"); \
 
 #define PIROS 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0
-#define KEK 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1
-#define ZOLD 1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
+#define KEK 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,1,1,1,1,1
+#define ZOLD 0,0,0,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
 #define rszin 0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1
 #define feher 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1
 
 int zold[24] = {1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0};
 
-#define LEDS 5
+int zold_szin[24] = {ZOLD};
+
+int GLOBAL_COLORARRAY[LEDS][24];
+
+void LEDprocess(int tomb[][24])
+{
+	int i,j;
+	for(i = 0; i < LEDS; i++)
+	{
+		for(j = 0; j < 24; j++)
+		{
+			if(tomb[i][j]==1)
+			{
+				bit1;
+			}
+			else
+			{
+				bit0;
+			}
+		}
+	}
+	if(i == LEDS)
+	{
+		ADC_Start(ADC0, adcStartSingle);
+		Delay(1);
+	}
+}
 
 void delay50ms()
 {
@@ -271,84 +298,114 @@ void clear()
 	}
 }
 
-int main(void)
+void init_hardware()
 {
-
-	ADC_CMU_config();
-	//TIMER_config();
-	ADC_config();
-
-	int i;
-	int j;
-	int tomb[LEDS][24] =
-	{
-	   {feher} ,   /*  initializers for row indexed by 0 */
-	   {feher} ,   /*  initializers for row indexed by 1 */
-	   {feher} ,   /*  initializers for row indexed by 2 */
-	   {feher} ,   /*  initializers for row indexed by 3 */
-	   {feher}    /*  initializers for row indexed by 4 */
-	};
 	CHIP_Init();
-	/* Setup SysTick Timer for 1 msec interrupts  */
-	  if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000)) {
-	    while (1) ;
-	  }
+	ADC_CMU_config();
+	ADC_config();
 	init_leds();
-
-	GPIO->P[2].DOUTCLR = 1 << 4;
-	delay50ms();
-	clear();
-	Delay(1000);
-	/*
-	for(i = 0; i < 24; i++)
+	/* Setup SysTick Timer for 1 msec interrupts  */
+	if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000))
 	{
-		if(zold[i] == 1)
+		while (1) ;
+	}
+}
+
+// AD átalakítás kiolvasása
+void AD_process()
+{
+	ADC_data_in = ADC_DataSingleGet(ADC0);
+	ADC_data_in_tomb[index]= ADC_data_in;
+	AD_voltage[index]=ADC_data_in * adkonst;
+	if(index==(adcmeret-1))
+	{
+		index=0;
+	}
+	else
+	{
+		index++;
+	}
+}
+
+/* ********************************************************* */
+/* ********************************************************* */
+/* ********************************************************* */
+
+void color2array()
+{
+	int i;
+	for(i = 0; i < LEDS; i++)
+	{
+		if(i % 2 == 0) { color2led(i, 255, 0, 0); }
+		else { color2led(i, 0, 255, 0); }
+	}
+}
+
+// RGB ---> GREEN RED BLUE
+void color2led(int led, int red, int green, int blue)
+{
+	int j;
+	int r = red;
+	int g = green;
+	int b = blue;
+	for(j = 0; j < 24; j++)
+	{
+		if(j >= 0 && j <= 7)
 		{
-			bit1;
+			GLOBAL_COLORARRAY[led][7-j] = g % 2;
+			g = g / 2;
+		}
+		else if(j >= 8 && j <= 15)
+		{
+			GLOBAL_COLORARRAY[led][15-j+8] = r % 2;
+			r = r / 2;
+		}
+		else if(j >= 16 && j <= 23)
+		{
+			GLOBAL_COLORARRAY[led][23-j+16] = b % 2;
+			b = b / 2;
 		}
 		else
 		{
-			bit0;
+			GLOBAL_COLORARRAY[led][j] = 0;
 		}
 	}
-	delay50ms();
-	*/
+}
+
+void oneColor(int red, int green, int blue)
+{
+	int i;
+	for(i = 0; i < LEDS; i++)
+	{
+		color2led(i, red, green, blue);
+	}
+}
+
+void setArray(int szin_tomb[])
+{
+	int i,j;
+	for(i = 0; i < LEDS; i++)
+	{
+		for(j = 0; j < 24; j++)
+		{
+			GLOBAL_COLORARRAY[i][j] = szin_tomb[j];
+		}
+	}
+}
+
+int main(void)
+{
+	init_hardware();
+	Delay(1000);
+	clear();
+	Delay(1000);
+	//color2array();
+	//color2led(10, 255, 255, 255);
+	//color2led(9, 255, 0, 0);
+	oneColor(196, 0, 160);
 	while(1)
 	{
-		//clear();
-		//Delay(1);
-		ADC_data_in = ADC_DataSingleGet(ADC0);  //AD átalakítás kiolvasása
-		ADC_data_in_tomb[index]= ADC_data_in;
-		AD_voltage[index]=ADC_data_in * adkonst;
-		if(index==(adcmeret-1))
-		{
-			index=0;
-		}
-		else
-		{
-			index++;
-		}
-
-		for(i = 0; i < LEDS; i++)
-		{
-			for(j = 0; j < 24; j++)
-			{
-				if(tomb[i][j]==1)
-				{
-					bit1;
-				}
-				else
-				{
-					bit0;
-				}
-			}
-		}
-		if(i == 5)
-		{
-
-			ADC_Start(ADC0, adcStartSingle);
-			Delay(1);
-
-		}
+		AD_process();
+		LEDprocess(GLOBAL_COLORARRAY);
 	}
 }
