@@ -6,11 +6,17 @@
 #include "em_chip.h"
 #include "em_system.h"
 #include "em_cmu.h"
-#include "em_timer.h"
 #include "em_adc.h"
-#include "em_dac.h"
 #include "em_gpio.h"
 #include "bsp.h"
+#include "InitDevice.h"
+#include "em_usart.h"
+// C std header fájlok
+#include <stdio.h>
+#include <string.h>
+// saját header fájlok
+#include "constants.h" // Konstansok a projektben.
+#include "message.h" // Üzenetkezeléshez tartozó változók és függvények.
 
 #define adref 3.3
 #define felbontas 4096
@@ -21,26 +27,11 @@
 #define LEDS 12
 
  uint32_t ADC_data_in_tomb[adcmeret];
+ uint32_t ADC_data_in;
  double AD_voltage[adcmeret];
- int index=0;
+ int idx=0;
 
-void TIMER_config(){
-	   //*********************************************
-	   // Timer configuration *
-	   //*********************************************
-	   TIMER_Init_TypeDef TIMER0_init = TIMER_INIT_DEFAULT;
-	   //void TIMER_Init(TIMER_TypeDef *timer, const TIMER_Init_TypeDef *init);
-	   TIMER_Init(TIMER0, &TIMER0_init);
-	   TIMER_CounterSet(TIMER0, 0); //
-	   //__STATIC_INLINE void TIMER_TopSet(TIMER_TypeDef *timer, uint32_t val)
-	   TIMER_TopSet(TIMER0, TIMER_DIV); // 48MHz/4/x = 12MHz/x
-	   //__STATIC_INLINE void TIMER_IntClear(TIMER_TypeDef *timer, uint32_t flags);
-	   TIMER_IntClear(TIMER0, TIMER_IF_OF);
-	   //TIMER_IntEnable(TIMER_TypeDef *timer, uint32_t flags);
-	   TIMER_IntEnable(TIMER0, TIMER_IF_OF);
-	   NVIC_EnableIRQ(TIMER0_IRQn);
 
-}
 void ADC_config(){
 	 //*********************************************
 	  // ADC configuration *
@@ -75,39 +66,13 @@ void ADC_CMU_config(){
 	 //CMU_ClockEnable(CMU_Clock_TypeDef clock, bool enable);
 	 CMU_ClockEnable(cmuClock_HFPER, true);
 	 CMU_ClockEnable(cmuClock_GPIO, true);
-	 CMU_ClockEnable(cmuClock_TIMER0, true);
 	 CMU_ClockEnable(cmuClock_ADC0, true);
-	 CMU_ClockEnable(cmuClock_DAC0, true);
+
+
+
 }
 
-// ******************************************
-// * T I M E R I R Q *
-// ******************************************
-uint32_t ADC_data_in; //DAC_data_out;
-uint32_t TimerCnt;
-/*void TIMER0_IRQHandler(void){
-	ADC_data_in = ADC_DataSingleGet(ADC0);
-	ADC_Start(ADC0, adcStartSingle);
-	ADC_data_in_tomb[index]= ADC_data_in;
-	AD_voltage[index]=ADC_data_in * adkonst;
-	if(index==(adcmeret-1))
-	{
-		index=0;
-	}
-	else
-	{
-		index++;
-	}
 
-	//DAC_data_out = process(ADC_data_in);
-	//DAC_Channel0OutputSet(DAC0, DAC_data_out);
-	TIMER_IntClear(TIMER0, TIMER_IF_OF);
-	TimerCnt++;
-	if (TimerCnt>FS){
-	TimerCnt=0;
-	}
-}
-*/
 
 void init_leds()
 {
@@ -251,6 +216,23 @@ int zold[24] = {1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0};
 int zold_szin[24] = {ZOLD};
 
 int GLOBAL_COLORARRAY[LEDS][24];
+/* *************
+  ÜZENETKEZELÉS
+************* */
+// A PC-rõl UART-on keresztül érkezett üzenet.
+extern char message[MESSAGE_MAX_SIZE]; // Üzenet tartalma.
+extern int messageSize; // Üzenet hossza.
+extern char command[COMMAND_MAX_SIZE]; //
+extern int step; // Hányadik 7 darabos karaktersorozatot jelenítsük meg.
+// Változó egy új üzenet jelzésére. Az értéke true, ha új (még feldolgozatlan) üzenet érkezett.
+extern bool volatile receivedMessage;
+// Write Text parancshoz flag. Értéke true, ha éppen futó szöveg fut a kijelzõn. Egyébként false az értéke.
+extern bool volatile writingText;
+extern char screen[KIJELZO_MERET + 1]; // Ennek a tartalma kerül majd az LCD-re.
+extern uint8_t ch; // UART-on kapott karakter.
+extern bool volatile new_char; // Érkezett-e új karakter flag.
+extern uint16_t ms_counter; // Milliszekundumos iterációhoz.
+/* ********** */
 
 void LEDprocess(int tomb[][24])
 {
@@ -301,9 +283,12 @@ void clear()
 void init_hardware()
 {
 	CHIP_Init();
+
+	enter_DefaultMode_from_RESET();
 	ADC_CMU_config();
 	ADC_config();
 	init_leds();
+
 	/* Setup SysTick Timer for 1 msec interrupts  */
 	if (SysTick_Config(CMU_ClockFreqGet(cmuClock_CORE) / 1000))
 	{
@@ -314,16 +299,17 @@ void init_hardware()
 // AD átalakítás kiolvasása
 void AD_process()
 {
+
 	ADC_data_in = ADC_DataSingleGet(ADC0);
-	ADC_data_in_tomb[index]= ADC_data_in;
-	AD_voltage[index]=ADC_data_in * adkonst;
-	if(index==(adcmeret-1))
+	ADC_data_in_tomb[idx]= ADC_data_in;
+	AD_voltage[idx]=ADC_data_in * adkonst;
+	if(idx==(adcmeret-1))
 	{
-		index=0;
+		idx=0;
 	}
 	else
 	{
-		index++;
+		idx++;
 	}
 }
 
@@ -395,14 +381,23 @@ void setArray(int szin_tomb[])
 
 int main(void)
 {
+	int i;
 	init_hardware();
+	USART_IntEnable(UART0, USART_IF_RXDATAV); // UART IT engedélyezés
+	NVIC_EnableIRQ(UART0_RX_IRQn);  // UART IT engedélyezés
+	USART_Tx(UART0, '<');
+	for(i = 0; i < 20; i++)
+		{
+			USART_Tx(UART0, 'a' + i);
+		}
+
 	Delay(1000);
 	clear();
 	Delay(1000);
 	//color2array();
 	//color2led(10, 255, 255, 255);
 	//color2led(9, 255, 0, 0);
-	oneColor(196, 0, 160);
+	oneColor(0, 255, 255);
 	while(1)
 	{
 		AD_process();
