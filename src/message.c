@@ -9,6 +9,7 @@
 #include "message.h" // Üzenetkezeléshez tartozó változók és függvények.
 #include "constants.h" // END_CHAR
 #include "segmentlcd.h"
+#include "main.h"
 
 // A PC-rõl UART-on keresztül érkezett üzenet.
 char message[100 + 1] = ""; // Üzenet tartalma.
@@ -24,6 +25,19 @@ bool volatile writingText = false;
 
 uint8_t ch; // UART-on kapott karakter.
 bool volatile new_char = false; // Érkezett-e új karakter flag.
+extern int GLOBAL_COLORARRAY[LEDS][24];
+char uzenet[100];
+int i;
+int meret=0;
+int red;
+int blue;
+int green;
+char cred[4];
+char cblue[4];
+char cgreen[4];
+int credhossz = 0;
+int cbluehossz = 0;
+int cgreenhossz = 0;
 
 void processCommand(char * message)
 {
@@ -31,6 +45,116 @@ void processCommand(char * message)
 	{
 		parancsok();
 	}
+	else if(strcmp(message, KEK)==0)
+	{
+		oneColor(0,0,255);
+		LEDprocess(GLOBAL_COLORARRAY);
+	}
+	else if(strcmp(message, ZOLD)==0)
+	{
+		oneColor(0,255,0);
+		LEDprocess(GLOBAL_COLORARRAY);
+	}
+	else if(strcmp(message, PIROS)==0)
+	{
+		oneColor(100,0,0);
+		LEDprocess(GLOBAL_COLORARRAY);
+	}
+	else if(strcmp(message, RSZIN)==0)
+	{
+		oneColor(200,0,200);
+		LEDprocess(GLOBAL_COLORARRAY);
+	}
+	else if(strcmp(message, TOROL)==0)
+	{
+		clear();
+	}
+	else if(strcmp(message, ANIM1)==0)
+	{
+		for(i = 0; i < 150; i++)
+		{
+			oneColor(i, 0, 0);
+			LEDprocess(GLOBAL_COLORARRAY);
+			Delay(100);
+		}
+		for(i = 0; i < 150; i++)
+		{
+			oneColor(0, i, 0);
+			LEDprocess(GLOBAL_COLORARRAY);
+			Delay(100);
+		}
+		for(i = 0; i < 150; i++)
+		{
+			oneColor(0, 0, i);
+			LEDprocess(GLOBAL_COLORARRAY);
+			Delay(100);
+		}
+	}
+	else if(strcmp(message, ANIM2)==0)
+	{
+		int i;
+		int j;
+		for(j = 0; j < 20; j++)
+		{
+			for(i = 0; i < LEDS; i++)
+			{
+				if(i % 2 == 0) { color2led(i, 255, 0, 0); }
+				else { color2led(i, 0, 255, 0); }
+			}
+			LEDprocess(GLOBAL_COLORARRAY);
+			Delay(100);
+			for(i = 0; i < LEDS; i++)
+			{
+				if(i % 2 != 0) { color2led(i, 255, 0, 0); }
+				else { color2led(i, 0, 255, 0); }
+			}
+			LEDprocess(GLOBAL_COLORARRAY);
+			Delay(100);
+		}
+	}
+	else
+	{
+		for(i=0;message[i]!=' ';i++)
+		{
+			uzenet[i]=message[i];
+			meret++;
+		}
+		uzenet[meret]='\0';
+		if(strcmp(uzenet, "LEDSZIN")==0)
+		{
+			for(i=0;message[meret+i+1]!=' ';i++)
+				{
+					cred[i]=message[meret+i+1];
+					credhossz++;
+				}
+				cred[credhossz]='\0';
+			for(i=0;message[meret+credhossz+i+2]!=' ';i++)
+				{
+					cgreen[i]=message[meret+credhossz+i+2];
+					cgreenhossz++;
+				}
+				cgreen[cgreenhossz]='\0';
+			for(i=0;message[meret+credhossz+cgreenhossz+i+3] != ' ';i++)
+				{
+					cblue[i]=message[meret+credhossz+cgreenhossz+i+3];
+					cbluehossz++;
+				}
+				cblue[cbluehossz]='\0';
+
+				red=atoi(cred);
+				green=atoi(cgreen);
+				blue=atoi(cblue);
+				oneColor(red,green,blue);
+				LEDprocess(GLOBAL_COLORARRAY);
+
+				uzenet[0] = '\0';
+				meret = 0;
+				credhossz = 0;
+				cbluehossz = 0;
+				cgreenhossz = 0;
+		}
+	}
+
 }
 void string2USART(char * string)
 {
@@ -80,7 +204,7 @@ void parancsok(void)
 	string2USART("Parancsok:"); USART_Tx(UART0, '\n');
 	string2USART(WRITETEXT); USART_Tx(UART0, '\n');
 	string2USART(HELP); USART_Tx(UART0, '\n');
-	string2USART(LED0BE); USART_Tx(UART0, '\n');
+	string2USART(LED); USART_Tx(UART0, '\n');
 	string2USART(LED0KI); USART_Tx(UART0, '\n');
 	string2USART(LED1BE); USART_Tx(UART0, '\n');
 	string2USART(LED1KI); USART_Tx(UART0, '\n');

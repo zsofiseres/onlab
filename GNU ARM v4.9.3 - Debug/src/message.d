@@ -63,7 +63,8 @@ src/message.o: ../src/message.c \
  C:\Users\zsofiseres\Documents\GitHub\onlab\inc/constants.h \
  c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\hardware\kit\common\drivers\segmentlcd.h \
  c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\hardware\kit\efm32gg_stk3700\config\segmentlcdconfig.h \
- c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\platform\emlib\inc\em_lcd.h
+ c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\platform\emlib\inc\em_lcd.h \
+ C:\Users\zsofiseres\Documents\GitHub\onlab\inc/main.h
 
 C:\Users\zsofiseres\Documents\GitHub\onlab\inc/em_usart.h:
 
@@ -194,3 +195,5 @@ c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\hardware\
 c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\hardware\kit\efm32gg_stk3700\config\segmentlcdconfig.h:
 
 c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\platform\emlib\inc\em_lcd.h:
+
+C:\Users\zsofiseres\Documents\GitHub\onlab\inc/main.h:

@@ -17,6 +17,7 @@
 // saját header fájlok
 #include "constants.h" // Konstansok a projektben.
 #include "message.h" // Üzenetkezeléshez tartozó változók és függvények.
+#include "main.h"
 
 #define adref 3.3
 #define felbontas 4096
@@ -223,15 +224,13 @@ int GLOBAL_COLORARRAY[LEDS][24];
 extern char message[MESSAGE_MAX_SIZE]; // Üzenet tartalma.
 extern int messageSize; // Üzenet hossza.
 extern char command[COMMAND_MAX_SIZE]; //
-extern int step; // Hányadik 7 darabos karaktersorozatot jelenítsük meg.
 // Változó egy új üzenet jelzésére. Az értéke true, ha új (még feldolgozatlan) üzenet érkezett.
 extern bool volatile receivedMessage;
 // Write Text parancshoz flag. Értéke true, ha éppen futó szöveg fut a kijelzõn. Egyébként false az értéke.
 extern bool volatile writingText;
-extern char screen[KIJELZO_MERET + 1]; // Ennek a tartalma kerül majd az LCD-re.
 extern uint8_t ch; // UART-on kapott karakter.
 extern bool volatile new_char; // Érkezett-e új karakter flag.
-extern uint16_t ms_counter; // Milliszekundumos iterációhoz.
+
 /* ********** */
 
 void LEDprocess(int tomb[][24])
@@ -386,11 +385,7 @@ int main(void)
 	USART_IntEnable(UART0, USART_IF_RXDATAV); // UART IT engedélyezés
 	NVIC_EnableIRQ(UART0_RX_IRQn);  // UART IT engedélyezés
 	USART_Tx(UART0, '<');
-	for(i = 0; i < 20; i++)
-		{
-			USART_Tx(UART0, 'a' + i);
-		}
-
+	USART_Tx(UART0, '<');
 	Delay(1000);
 	clear();
 	Delay(1000);
@@ -400,7 +395,29 @@ int main(void)
 	oneColor(0, 255, 255);
 	while(1)
 	{
+		// Érkezett karakter echo-ja.
+				if (new_char) {
+					new_char = false;
+					USART_Tx(UART0, ch); // Karakterenkénti echo.
+					// DEBUG-oláshoz: SegmentLCD_Number(ch);
+				}
+
+				// Ha új üzennet érkezett, akkor dolgozzuk fel.
+				if(receivedMessage)
+				{
+					receivedMessage = false; // Feldolgozás után új üzenet várunk majd.
+					writingText = false;
+
+					// Üzenetek feldolgozása:
+					processCommand(message);
+
+					// Üzenetet feldolgoztuk, "töröljük" az elõzõ üzenetet az új fogadása elõtt.
+					message[0] = '\0';
+					messageSize = 0;
+					// Terminál felkészítése a következõ parancsra:
+					USART_Tx(UART0, '\n');
+					string2USART(">>"); // Új prompt küldése.
+				}
 		AD_process();
-		LEDprocess(GLOBAL_COLORARRAY);
 	}
 }

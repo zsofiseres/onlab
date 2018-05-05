@@ -70,7 +70,8 @@ src/main.o: ../src/main.c \
  C:\Users\zsofiseres\Documents\GitHub\onlab\inc/em_usart.h \
  C:\Users\zsofiseres\Documents\GitHub\onlab\inc/InitDevice.h \
  C:\Users\zsofiseres\Documents\GitHub\onlab\inc/constants.h \
- C:\Users\zsofiseres\Documents\GitHub\onlab\inc/message.h
+ C:\Users\zsofiseres\Documents\GitHub\onlab\inc/message.h \
+ C:\Users\zsofiseres\Documents\GitHub\onlab\inc/main.h
 
 c:\siliconlabs\simplicitystudio\v4\developer\sdks\gecko_sdk_suite\v1.1\platform\device\siliconlabs\efm32gg\include\em_device.h:
 
@@ -215,3 +216,5 @@ C:\Users\zsofiseres\Documents\GitHub\onlab\inc/InitDevice.h:
 C:\Users\zsofiseres\Documents\GitHub\onlab\inc/constants.h:
 
 C:\Users\zsofiseres\Documents\GitHub\onlab\inc/message.h:
+
+C:\Users\zsofiseres\Documents\GitHub\onlab\inc/main.h:
